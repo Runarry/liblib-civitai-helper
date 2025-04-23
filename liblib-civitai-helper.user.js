@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         liblib|civitai助手-封面+模型信息（兼容各主流浏览器）
+// @name         liblib-civitai-helper 
 // @namespace    http://tampermonkey.net/
 // @version      1.3.8
 // @description  liblib|civitai助手，支持自动保存到目录（Chromium），或自动批量下载（Firefox/Safari等），封面图片和json同名，兼容新版Civitai接口和页面
