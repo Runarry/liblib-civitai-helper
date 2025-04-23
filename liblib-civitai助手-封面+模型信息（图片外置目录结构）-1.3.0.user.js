@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         liblib|civitai助手-封面+模型信息（图片外置目录结构）
 // @namespace    http://tampermonkey.net/
-// @version      1.3.0
+// @version      1.3.1
 // @description  liblib|civitai助手，下载封面+模型信息，封面图片在目录外层，其他文件在子目录，兼容新版Civitai接口和页面
 // @author       kaiery & ChatGPT
 // @match        https://www.liblib.ai/modelinfo/*
@@ -94,7 +94,9 @@
                         description: textDesc,
                         uuid: uuid,
                         buildId: buildId,
-                        webid: webid
+                        webid: webid,
+                        from: "Liblib",
+                        fromUrl: window.location.href
                     };
                     const promptList = [];
                     // 图片信息start
@@ -239,7 +241,9 @@
             modelId,
             modelFile: (version.files && version.files[0]?.name) || "",
             modelVersionId,
-            triggerWords
+            triggerWords,
+            from: "Civitai",
+            fromUrl: window.location.href
         };
         const modelDirHandle = await dirHandle.getDirectoryHandle(model_name_ver, {create: true});
         const savejsonHandle = await modelDirHandle.getFileHandle(modelName + ".json", {create: true});
