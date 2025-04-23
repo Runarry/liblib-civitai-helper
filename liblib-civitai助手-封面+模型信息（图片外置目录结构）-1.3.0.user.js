@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         liblib|civitai助手-封面+模型信息（图片外置目录结构）
+// @name         liblib|civitai助手 - 封面+模型信息
 // @namespace    http://tampermonkey.net/
-// @version      1.3.5
-// @description  liblib|civitai助手，下载封面+模型信息，封面图片和json保存在同一目录，兼容新版Civitai接口和页面；支持基础算法字段
-// @author       kaiery & ChatGPT
+// @version      1.3.6
+// @description  liblib|civitai助手，下载封面+模型信息，封面图片和json保存在同一目录，命名一致。
+// @author       kaiery & ChatGPT & Banazzle
 // @match        https://www.liblib.ai/modelinfo/*
 // @match        https://www.liblib.art/modelinfo/*
 // @match        https://civitai.com/models/*
@@ -15,7 +15,6 @@
 (function () {
     'use strict';
 
-    // --------- 工具函数 -----------
     function htmlToText(html) {
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = html;
@@ -145,8 +144,9 @@
                         examplePrompt: promptList,
                         basic: basic
                     };
-                    // 保存模型json与图片到同一目录
-                    const savejsonHandle = await dirHandle.getFileHandle(modelName + ".json", {create: true});
+                    // 保存模型json与图片到同一目录，命名一致
+                    const jsonFileName = coverFileName.replace(/\.[^/.]+$/, ".json");
+                    const savejsonHandle = await dirHandle.getFileHandle(jsonFileName, {create: true});
                     const writablejson = await savejsonHandle.createWritable();
                     await writablejson.write(JSON.stringify(modelInfoJson, null, 4));
                     await writablejson.close();
@@ -246,7 +246,8 @@
         } else if (model_data.baseModel) {
             basic = model_data.baseModel;
         }
-        // 保存模型信息为JSON（与图片同目录）
+        // 保存模型信息为JSON（与图片同目录，命名一致）
+        const jsonFileName = coverFileName ? coverFileName.replace(/\.[^/.]+$/, ".json") : (model_name_ver + ".json");
         const modelInfo = {
             modelType,
             description: modelDesc,
@@ -261,7 +262,7 @@
             examplePrompt: promptList,
             basic: basic
         };
-        const savejsonHandle = await dirHandle.getFileHandle(modelName + ".json", {create: true});
+        const savejsonHandle = await dirHandle.getFileHandle(jsonFileName, {create: true});
         const writablejson = await savejsonHandle.createWritable();
         await writablejson.write(JSON.stringify(modelInfo, null, 4));
         await writablejson.close();
@@ -322,7 +323,6 @@
         }
     }
 
-    // 监听页面跳转，自动插入按钮
     function observeUrlChange(site) {
         let lastUrl = location.href;
         setInterval(() => {
@@ -338,7 +338,6 @@
         }, 1000);
     }
 
-    // --------- 主入口 -----------
     (function () {
         const site = window.location.hostname.includes('liblib') ? 'liblib'
                   : window.location.hostname.includes('civitai') ? 'civitai'
