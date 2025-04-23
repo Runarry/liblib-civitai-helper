@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         liblib|civitai助手-封面+模型信息（图片外置目录结构）
 // @namespace    http://tampermonkey.net/
-// @version      1.3.2
-// @description  liblib|civitai助手，下载封面+模型信息，封面图片在目录外层，其他文件在子目录，兼容新版Civitai接口和页面
+// @version      1.3.3
+// @description  liblib|civitai助手，下载封面+模型信息，封面图片和json保存在同一目录，兼容新版Civitai接口和页面
 // @author       kaiery & ChatGPT
 // @match        https://www.liblib.ai/modelinfo/*
 // @match        https://www.liblib.art/modelinfo/*
@@ -94,6 +94,7 @@
                     const authImages = verItem.imageGroup.images;
                     let isCover = false;
                     let coverExt = '';
+                    let coverFileName = '';
                     for (const authImage of authImages) {
                         const authImageUrl = authImage.imageUrl;
                         var authimageExt = authImageUrl.split("/").pop().split(".").pop();
@@ -104,11 +105,11 @@
                         if (!isCover) {
                             isCover = true;
                             coverExt = authimageExt;
-                            // 下载图片（外层）
+                            coverFileName = model_name_ver + "." + authimageExt;
+                            // 下载图片（与json同目录）
                             const resp_download = await fetch(authImageUrl);
                             const blob = await resp_download.blob();
-                            const fileName = model_name_ver + "." + authimageExt;
-                            const picHandle = await dirHandle.getFileHandle(fileName, {create: true});
+                            const picHandle = await dirHandle.getFileHandle(coverFileName, {create: true});
                             const writable = await picHandle.createWritable();
                             await writable.write(blob);
                             await writable.close();
@@ -132,9 +133,8 @@
                         triggerWord: triggerWord,
                         examplePrompt: promptList
                     };
-                    // 创建模型目录( 模型+版本名 )
-                    const modelDirHandle = await dirHandle.getDirectoryHandle(model_name_ver, {create: true});
-                    const savejsonHandle = await modelDirHandle.getFileHandle(modelName + ".json", {create: true});
+                    // 保存模型json与图片到同一目录
+                    const savejsonHandle = await dirHandle.getFileHandle(modelName + ".json", {create: true});
                     const writablejson = await savejsonHandle.createWritable();
                     await writablejson.write(JSON.stringify(modelInfoJson, null, 4));
                     await writablejson.close();
@@ -205,20 +205,21 @@
         }
         let coverImageUrl = null;
         let coverExt = '';
+        let coverFileName = '';
         if (Array.isArray(version.images) && version.images.length > 0) {
             const coverImgObj = version.images.find(img => img.type === 'image') || version.images[0];
             coverImageUrl = coverImgObj.url;
             if (coverImageUrl) {
                 coverExt = coverImageUrl.split('.').pop().split('?')[0];
+                coverFileName = model_name_ver + "." + coverExt;
             }
         }
-        // 下载封面图片（外层）
-        if (coverImageUrl) {
+        // 下载封面图片（与json同目录）
+        if (coverImageUrl && coverFileName) {
             try {
                 const resp = await fetch(coverImageUrl);
                 const blob = await resp.blob();
-                const fileName = model_name_ver + "." + coverExt;
-                const picHandle = await dirHandle.getFileHandle(fileName, {create: true});
+                const picHandle = await dirHandle.getFileHandle(coverFileName, {create: true});
                 const writable = await picHandle.createWritable();
                 await writable.write(blob);
                 await writable.close();
@@ -226,7 +227,7 @@
                 alert("下载封面图片失败: " + e);
             }
         }
-        // 保存模型信息为JSON
+        // 保存模型信息为JSON（与图片同目录）
         const modelInfo = {
             modelType,
             description: modelDesc,
@@ -240,8 +241,7 @@
             fromUrl: window.location.href,
             examplePrompt: promptList
         };
-        const modelDirHandle = await dirHandle.getDirectoryHandle(model_name_ver, {create: true});
-        const savejsonHandle = await modelDirHandle.getFileHandle(modelName + ".json", {create: true});
+        const savejsonHandle = await dirHandle.getFileHandle(modelName + ".json", {create: true});
         const writablejson = await savejsonHandle.createWritable();
         await writablejson.write(JSON.stringify(modelInfo, null, 4));
         await writablejson.close();
