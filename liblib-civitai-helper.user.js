@@ -7,8 +7,8 @@
 // @match        https://www.liblib.art/modelinfo/*
 // @match        https://civitai.com/models/*
 // @match        http://civitai.com/models/*
-// @updateURL    https://github.com/
-// @downloadURL  https://github.com/
+// @updateURL    https://raw.githubusercontent.com/Runarry/liblib-civitai-helper/refs/heads/main/liblib-civitai-helper.user.js
+// @downloadURL  https://raw.githubusercontent.com/Runarry/liblib-civitai-helper/refs/heads/main/liblib-civitai-helper.user.js
 // @grant        GM_download
 // @license      MIT
 // ==/UserScript==
