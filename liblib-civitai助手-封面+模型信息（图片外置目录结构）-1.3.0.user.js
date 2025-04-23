@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         liblib|civitai助手-封面+模型信息（图片外置目录结构）
 // @namespace    http://tampermonkey.net/
-// @version      1.3.3
+// @version      1.3.4
 // @description  liblib|civitai助手，下载封面+模型信息，封面图片和json保存在同一目录，兼容新版Civitai接口和页面
 // @author       kaiery & ChatGPT
 // @match        https://www.liblib.ai/modelinfo/*
@@ -115,6 +115,17 @@
                             await writable.close();
                         }
                     }
+                    // 提取基础算法
+                    let basic = "";
+                    try {
+                        const labels = document.querySelectorAll('.ModelDetailCard_label__PmKU_');
+                        labels.forEach(label => {
+                            if (label.textContent.trim() === '基础算法') {
+                                const valueDiv = label.nextElementSibling;
+                                if (valueDiv) basic = valueDiv.textContent.trim();
+                            }
+                        });
+                    } catch (e) {}
                     // 图片信息end
                     let triggerWord = '触发词：';
                     if ('triggerWord' in verItem && verItem.triggerWord) {
@@ -131,7 +142,8 @@
                         from: "Liblib",
                         fromUrl: window.location.href,
                         triggerWord: triggerWord,
-                        examplePrompt: promptList
+                        examplePrompt: promptList,
+                        basic: basic
                     };
                     // 保存模型json与图片到同一目录
                     const savejsonHandle = await dirHandle.getFileHandle(modelName + ".json", {create: true});
