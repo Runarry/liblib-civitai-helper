@@ -1,1 +1,1 @@
-基于 [liblib|civitai助手-封面+模型信息](https://greasyfork.org/zh-CN/scripts/508360-liblib-civitai%E5%8A%A9%E6%89%8B-%E5%B0%81%E9%9D%A2-%E6%A8%A1%E5%9E%8B%E4%BF%A1%E6%81%AF) 基础上修改的版本，主要为了方便自己用，同时兼容了Firefox浏览区
+基于 [liblib|civitai助手-封面+模型信息](https://greasyfork.org/zh-CN/scripts/508360-liblib-civitai%E5%8A%A9%E6%89%8B-%E5%B0%81%E9%9D%A2-%E6%A8%A1%E5%9E%8B%E4%BF%A1%E6%81%AF) 基础上修改的版本，主要为了方便自己用，同时兼容了Firefox。
