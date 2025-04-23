@@ -1,14 +1,14 @@
 // ==UserScript==
-// @name         liblib|civitai助手 - 封面+模型信息
+// @name         liblib|civitai助手-封面+模型信息（兼容Firefox）
 // @namespace    http://tampermonkey.net/
-// @version      1.3.6
-// @description  liblib|civitai助手，下载封面+模型信息，封面图片和json保存在同一目录，命名一致。
-// @author       kaiery & ChatGPT & Banazzle
+// @version      1.3.7
+// @description  liblib|civitai助手，下载模型封面图片和json同名。
+// @author       kaiery & ChatGPT &banazzle
 // @match        https://www.liblib.ai/modelinfo/*
 // @match        https://www.liblib.art/modelinfo/*
 // @match        https://civitai.com/models/*
 // @match        http://civitai.com/models/*
-// @grant        none
+// @grant        GM_download
 // @license      MIT
 // ==/UserScript==
 
@@ -27,10 +27,13 @@
         return text;
     }
 
+    function isChromiumFSAPISupported() {
+        return typeof window.showDirectoryPicker === "function";
+    }
+
     // --------- liblib功能部分 -----------
     async function saveLibLibAuthImagesInfo() {
         let modelType = 1;
-        const dirHandle = await window.showDirectoryPicker({mode: "readwrite"});
         const div = document.querySelector('.ant-tabs-tab.ant-tabs-tab-active');
         const modelVersionId = parseInt(div.getAttribute('data-node-key'));
         const modelVer = div.innerText.replace(/[/\\?%*:|"<>]/g, '-');
@@ -47,113 +50,140 @@
                 }
             }
         });
-        if (textDesc) {
-            const scriptContent = document.getElementById('__NEXT_DATA__').textContent;
-            const scriptJson = JSON.parse(scriptContent);
-            const uuid = scriptJson.query.uuid;
-            const buildId = scriptJson.buildId;
-            const webid = scriptJson.props.webid;
-            const url_acceptor = "https://www.liblib.art/api/www/log/acceptor/f?timestamp=" + Date.now();
-            const url_model = "https://www.liblib.art/api/www/model/getByUuid/" + uuid + "?timestamp=" + Date.now();
+        if (!textDesc) return;
 
-            await fetch(url_acceptor, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({timestamp: Date.now()})
-            });
-            const resp = await fetch(url_model, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({timestamp: Date.now()})
-            });
-            const model_data = await resp.json();
-            if (model_data.code !== 0) return;
-            const modelId = model_data.data.id;
-            const modelName = model_data.data.name.replace(/[/\\?%*:|"<>]/g, '-');
-            let model_name_ver = modelName + "_" + modelVer;
-            if (model_name_ver.slice(-1) === '.') {
-                model_name_ver = model_name_ver.substring(0, model_name_ver.length - 1);
-            }
-            modelType = model_data.data.modelType;
-            let modelTypeName = '未分类';
-            switch (modelType) {
-                case 1: modelTypeName = 'CheckPoint'; break;
-                case 2: modelTypeName = 'embedding'; break;
-                case 3: modelTypeName = 'HYPERNETWORK'; break;
-                case 4: modelTypeName = 'AESTHETIC GRADIENT'; break;
-                case 5: modelTypeName = 'Lora'; break;
-                case 6: modelTypeName = 'LyCORIS'; break;
-                case 9: modelTypeName = 'WILDCARDS'; break;
-            }
-            const versions = model_data.data.versions;
-            for (const verItem of versions) {
-                if (verItem.id === modelVersionId) {
-                    const promptList = [];
-                    // 图片信息start
-                    const authImages = verItem.imageGroup.images;
-                    let isCover = false;
-                    let coverExt = '';
-                    let coverFileName = '';
-                    for (const authImage of authImages) {
-                        const authImageUrl = authImage.imageUrl;
-                        var authimageExt = authImageUrl.split("/").pop().split(".").pop();
-                        var tmp = authimageExt.indexOf("?");
-                        if (tmp > 0) authimageExt = authimageExt.substring(0, tmp);
-                        const generateInfo = authImage.generateInfo;
-                        if (generateInfo && generateInfo.prompt) promptList.push(generateInfo.prompt);
-                        if (!isCover) {
-                            isCover = true;
-                            coverExt = authimageExt;
-                            coverFileName = model_name_ver + "." + authimageExt;
-                            // 下载图片（与json同目录）
-                            const resp_download = await fetch(authImageUrl);
-                            const blob = await resp_download.blob();
-                            const picHandle = await dirHandle.getFileHandle(coverFileName, {create: true});
-                            const writable = await picHandle.createWritable();
-                            await writable.write(blob);
-                            await writable.close();
+        const scriptContent = document.getElementById('__NEXT_DATA__').textContent;
+        const scriptJson = JSON.parse(scriptContent);
+        const uuid = scriptJson.query.uuid;
+        const buildId = scriptJson.buildId;
+        const webid = scriptJson.props.webid;
+        const url_acceptor = "https://www.liblib.art/api/www/log/acceptor/f?timestamp=" + Date.now();
+        const url_model = "https://www.liblib.art/api/www/model/getByUuid/" + uuid + "?timestamp=" + Date.now();
+
+        await fetch(url_acceptor, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({timestamp: Date.now()})
+        });
+        const resp = await fetch(url_model, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({timestamp: Date.now()})
+        });
+        const model_data = await resp.json();
+        if (model_data.code !== 0) return;
+        const modelId = model_data.data.id;
+        const modelName = model_data.data.name.replace(/[/\\?%*:|"<>]/g, '-');
+        let model_name_ver = modelName + "_" + modelVer;
+        if (model_name_ver.slice(-1) === '.') {
+            model_name_ver = model_name_ver.substring(0, model_name_ver.length - 1);
+        }
+        modelType = model_data.data.modelType;
+        let modelTypeName = '未分类';
+        switch (modelType) {
+            case 1: modelTypeName = 'CheckPoint'; break;
+            case 2: modelTypeName = 'embedding'; break;
+            case 3: modelTypeName = 'HYPERNETWORK'; break;
+            case 4: modelTypeName = 'AESTHETIC GRADIENT'; break;
+            case 5: modelTypeName = 'Lora'; break;
+            case 6: modelTypeName = 'LyCORIS'; break;
+            case 9: modelTypeName = 'WILDCARDS'; break;
+        }
+        const versions = model_data.data.versions;
+        for (const verItem of versions) {
+            if (verItem.id === modelVersionId) {
+                const promptList = [];
+                // 图片信息start
+                const authImages = verItem.imageGroup.images;
+                let isCover = false;
+                let coverExt = '';
+                let coverFileName = '';
+                let coverImageUrl = '';
+                let coverBlob = null;
+                for (const authImage of authImages) {
+                    const authImageUrl = authImage.imageUrl;
+                    var authimageExt = authImageUrl.split("/").pop().split(".").pop();
+                    var tmp = authimageExt.indexOf("?");
+                    if (tmp > 0) authimageExt = authimageExt.substring(0, tmp);
+                    const generateInfo = authImage.generateInfo;
+                    if (generateInfo && generateInfo.prompt) promptList.push(generateInfo.prompt);
+                    if (!isCover) {
+                        isCover = true;
+                        coverExt = authimageExt;
+                        coverFileName = model_name_ver + "." + authimageExt;
+                        coverImageUrl = authImageUrl;
+                    }
+                }
+                // 提取基础算法
+                let basic = "";
+                try {
+                    const labels = document.querySelectorAll('.ModelDetailCard_label__PmKU_');
+                    labels.forEach(label => {
+                        if (label.textContent.trim() === '基础算法') {
+                            const valueDiv = label.nextElementSibling;
+                            if (valueDiv) basic = valueDiv.textContent.trim();
                         }
+                    });
+                } catch (e) {}
+                // 图片信息end
+                let triggerWord = '触发词：';
+                if ('triggerWord' in verItem && verItem.triggerWord) {
+                    triggerWord = triggerWord + verItem.triggerWord;
+                } else {
+                    triggerWord = triggerWord + "无";
+                }
+                let modelInfoJson = {
+                    modelType: modelTypeName,
+                    description: textDesc,
+                    uuid: uuid,
+                    buildId: buildId,
+                    webid: webid,
+                    from: "Liblib",
+                    fromUrl: window.location.href,
+                    triggerWord: triggerWord,
+                    examplePrompt: promptList,
+                    basic: basic
+                };
+                const jsonFileName = coverFileName.replace(/\.[^/.]+$/, ".json");
+
+                // --------- 分支：Chromium（showDirectoryPicker）或 其他浏览器（GM_download） -----------
+                if (isChromiumFSAPISupported()) {
+                    const dirHandle = await window.showDirectoryPicker({mode: "readwrite"});
+                    // 下载图片
+                    if (coverImageUrl) {
+                        const resp_download = await fetch(coverImageUrl);
+                        const blob = await resp_download.blob();
+                        const picHandle = await dirHandle.getFileHandle(coverFileName, {create: true});
+                        const writable = await picHandle.createWritable();
+                        await writable.write(blob);
+                        await writable.close();
                     }
-                    // 提取基础算法
-                    let basic = "";
-                    try {
-                        const labels = document.querySelectorAll('.ModelDetailCard_label__PmKU_');
-                        labels.forEach(label => {
-                            if (label.textContent.trim() === '基础算法') {
-                                const valueDiv = label.nextElementSibling;
-                                if (valueDiv) basic = valueDiv.textContent.trim();
-                            }
-                        });
-                    } catch (e) {}
-                    // 图片信息end
-                    let triggerWord = '触发词：';
-                    if ('triggerWord' in verItem && verItem.triggerWord) {
-                        triggerWord = triggerWord + verItem.triggerWord;
-                    } else {
-                        triggerWord = triggerWord + "无";
-                    }
-                    let modelInfoJson = {
-                        modelType: modelTypeName,
-                        description: textDesc,
-                        uuid: uuid,
-                        buildId: buildId,
-                        webid: webid,
-                        from: "Liblib",
-                        fromUrl: window.location.href,
-                        triggerWord: triggerWord,
-                        examplePrompt: promptList,
-                        basic: basic
-                    };
-                    // 保存模型json与图片到同一目录，命名一致
-                    const jsonFileName = coverFileName.replace(/\.[^/.]+$/, ".json");
+                    // 保存json
                     const savejsonHandle = await dirHandle.getFileHandle(jsonFileName, {create: true});
                     const writablejson = await savejsonHandle.createWritable();
                     await writablejson.write(JSON.stringify(modelInfoJson, null, 4));
                     await writablejson.close();
+                } else {
+                    // 非Chromium，自动下载到默认下载目录
+                    // 下载图片
+                    if (coverImageUrl) {
+                        GM_download({
+                            url: coverImageUrl,
+                            name: coverFileName
+                        });
+                    }
+                    // 保存json
+                    const jsonBlob = new Blob([JSON.stringify(modelInfoJson, null, 4)], {type: "application/json"});
+                    const url = URL.createObjectURL(jsonBlob);
+                    GM_download({
+                        url: url,
+                        name: jsonFileName,
+                        onload: () => URL.revokeObjectURL(url)
+                    });
                 }
+                alert("封面信息下载完成");
             }
         }
-        alert("封面信息下载完成");
     }
 
     // --------- Civitai功能部分（新版接口+图片外层目录） -----------
@@ -176,8 +206,6 @@
             alert("未找到模型ID信息，请确认当前页面为模型详情页。");
             return;
         }
-        const dirHandle = await window.showDirectoryPicker({mode: "readwrite"});
-
         // 拉取模型数据（GET）
         const url_model = `https://civitai.com/api/v1/models/${modelId}`;
         let model_data;
@@ -226,19 +254,7 @@
                 coverFileName = model_name_ver + "." + coverExt;
             }
         }
-        // 下载封面图片（与json同目录）
-        if (coverImageUrl && coverFileName) {
-            try {
-                const resp = await fetch(coverImageUrl);
-                const blob = await resp.blob();
-                const picHandle = await dirHandle.getFileHandle(coverFileName, {create: true});
-                const writable = await picHandle.createWritable();
-                await writable.write(blob);
-                await writable.close();
-            } catch (e) {
-                alert("下载封面图片失败: " + e);
-            }
-        }
+        const jsonFileName = coverFileName ? coverFileName.replace(/\.[^/.]+$/, ".json") : (model_name_ver + ".json");
         // 提取基础算法
         let basic = "";
         if (version.baseModel) {
@@ -246,8 +262,6 @@
         } else if (model_data.baseModel) {
             basic = model_data.baseModel;
         }
-        // 保存模型信息为JSON（与图片同目录，命名一致）
-        const jsonFileName = coverFileName ? coverFileName.replace(/\.[^/.]+$/, ".json") : (model_name_ver + ".json");
         const modelInfo = {
             modelType,
             description: modelDesc,
@@ -262,10 +276,39 @@
             examplePrompt: promptList,
             basic: basic
         };
-        const savejsonHandle = await dirHandle.getFileHandle(jsonFileName, {create: true});
-        const writablejson = await savejsonHandle.createWritable();
-        await writablejson.write(JSON.stringify(modelInfo, null, 4));
-        await writablejson.close();
+
+        if (isChromiumFSAPISupported()) {
+            const dirHandle = await window.showDirectoryPicker({mode: "readwrite"});
+            // 下载图片
+            if (coverImageUrl) {
+                const resp = await fetch(coverImageUrl);
+                const blob = await resp.blob();
+                const picHandle = await dirHandle.getFileHandle(coverFileName, {create: true});
+                const writable = await picHandle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+            }
+            // 保存json
+            const savejsonHandle = await dirHandle.getFileHandle(jsonFileName, {create: true});
+            const writablejson = await savejsonHandle.createWritable();
+            await writablejson.write(JSON.stringify(modelInfo, null, 4));
+            await writablejson.close();
+        } else {
+            // 非Chromium，自动下载到默认下载目录
+            if (coverImageUrl) {
+                GM_download({
+                    url: coverImageUrl,
+                    name: coverFileName
+                });
+            }
+            const jsonBlob = new Blob([JSON.stringify(modelInfo, null, 4)], {type: "application/json"});
+            const url = URL.createObjectURL(jsonBlob);
+            GM_download({
+                url: url,
+                name: jsonFileName,
+                onload: () => URL.revokeObjectURL(url)
+            });
+        }
         alert("封面信息下载完成");
     }
 
