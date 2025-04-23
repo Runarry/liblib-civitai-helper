@@ -1,9 +1,8 @@
 // ==UserScript==
-// @name         liblib|civitai助手-封面+模型信息（兼容Firefox）
+// @name         liblib|civitai助手-封面+模型信息（兼容各主流浏览器）
 // @namespace    http://tampermonkey.net/
-// @version      1.3.7
-// @description  liblib|civitai助手，下载模型封面图片和json同名。
-// @author       kaiery & ChatGPT &banazzle
+// @version      1.3.8
+// @description  liblib|civitai助手，支持自动保存到目录（Chromium），或自动批量下载（Firefox/Safari等），封面图片和json同名，兼容新版Civitai接口和页面
 // @match        https://www.liblib.ai/modelinfo/*
 // @match        https://www.liblib.art/modelinfo/*
 // @match        https://civitai.com/models/*
@@ -93,13 +92,11 @@
         for (const verItem of versions) {
             if (verItem.id === modelVersionId) {
                 const promptList = [];
-                // 图片信息start
                 const authImages = verItem.imageGroup.images;
                 let isCover = false;
                 let coverExt = '';
                 let coverFileName = '';
                 let coverImageUrl = '';
-                let coverBlob = null;
                 for (const authImage of authImages) {
                     const authImageUrl = authImage.imageUrl;
                     var authimageExt = authImageUrl.split("/").pop().split(".").pop();
@@ -114,7 +111,6 @@
                         coverImageUrl = authImageUrl;
                     }
                 }
-                // 提取基础算法
                 let basic = "";
                 try {
                     const labels = document.querySelectorAll('.ModelDetailCard_label__PmKU_');
@@ -125,13 +121,14 @@
                         }
                     });
                 } catch (e) {}
-                // 图片信息end
                 let triggerWord = '触发词：';
                 if ('triggerWord' in verItem && verItem.triggerWord) {
                     triggerWord = triggerWord + verItem.triggerWord;
                 } else {
                     triggerWord = triggerWord + "无";
                 }
+                const jsonFileName = coverFileName.replace(/\.[^/.]+$/, ".json");
+                // examplePrompt 放最后
                 let modelInfoJson = {
                     modelType: modelTypeName,
                     description: textDesc,
@@ -141,12 +138,9 @@
                     from: "Liblib",
                     fromUrl: window.location.href,
                     triggerWord: triggerWord,
-                    examplePrompt: promptList,
-                    basic: basic
+                    basic: basic,
+                    examplePrompt: promptList
                 };
-                const jsonFileName = coverFileName.replace(/\.[^/.]+$/, ".json");
-
-                // --------- 分支：Chromium（showDirectoryPicker）或 其他浏览器（GM_download） -----------
                 if (isChromiumFSAPISupported()) {
                     const dirHandle = await window.showDirectoryPicker({mode: "readwrite"});
                     // 下载图片
@@ -164,15 +158,12 @@
                     await writablejson.write(JSON.stringify(modelInfoJson, null, 4));
                     await writablejson.close();
                 } else {
-                    // 非Chromium，自动下载到默认下载目录
-                    // 下载图片
                     if (coverImageUrl) {
                         GM_download({
                             url: coverImageUrl,
                             name: coverFileName
                         });
                     }
-                    // 保存json
                     const jsonBlob = new Blob([JSON.stringify(modelInfoJson, null, 4)], {type: "application/json"});
                     const url = URL.createObjectURL(jsonBlob);
                     GM_download({
@@ -186,7 +177,7 @@
         }
     }
 
-    // --------- Civitai功能部分（新版接口+图片外层目录） -----------
+    // --------- Civitai功能部分 -----------
     function getModelInfoFromURL() {
         const url = new URL(window.location.href);
         const pathParts = url.pathname.split('/');
@@ -206,7 +197,6 @@
             alert("未找到模型ID信息，请确认当前页面为模型详情页。");
             return;
         }
-        // 拉取模型数据（GET）
         const url_model = `https://civitai.com/api/v1/models/${modelId}`;
         let model_data;
         try {
@@ -255,13 +245,13 @@
             }
         }
         const jsonFileName = coverFileName ? coverFileName.replace(/\.[^/.]+$/, ".json") : (model_name_ver + ".json");
-        // 提取基础算法
         let basic = "";
         if (version.baseModel) {
             basic = version.baseModel;
         } else if (model_data.baseModel) {
             basic = model_data.baseModel;
         }
+        // examplePrompt 放最后
         const modelInfo = {
             modelType,
             description: modelDesc,
@@ -273,13 +263,12 @@
             triggerWords,
             from: "Civitai",
             fromUrl: window.location.href,
-            examplePrompt: promptList,
-            basic: basic
+            basic: basic,
+            examplePrompt: promptList
         };
 
         if (isChromiumFSAPISupported()) {
             const dirHandle = await window.showDirectoryPicker({mode: "readwrite"});
-            // 下载图片
             if (coverImageUrl) {
                 const resp = await fetch(coverImageUrl);
                 const blob = await resp.blob();
@@ -288,13 +277,11 @@
                 await writable.write(blob);
                 await writable.close();
             }
-            // 保存json
             const savejsonHandle = await dirHandle.getFileHandle(jsonFileName, {create: true});
             const writablejson = await savejsonHandle.createWritable();
             await writablejson.write(JSON.stringify(modelInfo, null, 4));
             await writablejson.close();
         } else {
-            // 非Chromium，自动下载到默认下载目录
             if (coverImageUrl) {
                 GM_download({
                     url: coverImageUrl,
@@ -312,7 +299,6 @@
         alert("封面信息下载完成");
     }
 
-    // --------- 按钮插入和监听部分（按原位插入） -----------
     function createButtons(site) {
         if (document.getElementById('model-helper-btn')) return;
         const div1 = document.createElement('div');
