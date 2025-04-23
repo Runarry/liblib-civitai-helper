@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         liblib|civitai助手-封面+模型信息（图片外置目录结构）
 // @namespace    http://tampermonkey.net/
-// @version      1.3.1
+// @version      1.3.2
 // @description  liblib|civitai助手，下载封面+模型信息，封面图片在目录外层，其他文件在子目录，兼容新版Civitai接口和页面
 // @author       kaiery & ChatGPT
 // @match        https://www.liblib.ai/modelinfo/*
@@ -89,15 +89,6 @@
             const versions = model_data.data.versions;
             for (const verItem of versions) {
                 if (verItem.id === modelVersionId) {
-                    let modelInfoJson = {
-                        modelType: modelTypeName,
-                        description: textDesc,
-                        uuid: uuid,
-                        buildId: buildId,
-                        webid: webid,
-                        from: "Liblib",
-                        fromUrl: window.location.href
-                    };
                     const promptList = [];
                     // 图片信息start
                     const authImages = verItem.imageGroup.images;
@@ -130,20 +121,23 @@
                     } else {
                         triggerWord = triggerWord + "无";
                     }
-                    modelInfoJson.triggerWord = triggerWord;
+                    let modelInfoJson = {
+                        modelType: modelTypeName,
+                        description: textDesc,
+                        uuid: uuid,
+                        buildId: buildId,
+                        webid: webid,
+                        from: "Liblib",
+                        fromUrl: window.location.href,
+                        triggerWord: triggerWord,
+                        examplePrompt: promptList
+                    };
                     // 创建模型目录( 模型+版本名 )
                     const modelDirHandle = await dirHandle.getDirectoryHandle(model_name_ver, {create: true});
                     const savejsonHandle = await modelDirHandle.getFileHandle(modelName + ".json", {create: true});
                     const writablejson = await savejsonHandle.createWritable();
                     await writablejson.write(JSON.stringify(modelInfoJson, null, 4));
                     await writablejson.close();
-                    const saveExampleHandle = await modelDirHandle.getFileHandle("example.txt", {create: true});
-                    const writableExample = await saveExampleHandle.createWritable();
-                    await writableExample.write(triggerWord + '\n\n');
-                    for (const str of promptList) {
-                        await writableExample.write(str + '\n\n');
-                    }
-                    await writableExample.close();
                 }
             }
         }
@@ -243,21 +237,14 @@
             modelVersionId,
             triggerWords,
             from: "Civitai",
-            fromUrl: window.location.href
+            fromUrl: window.location.href,
+            examplePrompt: promptList
         };
         const modelDirHandle = await dirHandle.getDirectoryHandle(model_name_ver, {create: true});
         const savejsonHandle = await modelDirHandle.getFileHandle(modelName + ".json", {create: true});
         const writablejson = await savejsonHandle.createWritable();
         await writablejson.write(JSON.stringify(modelInfo, null, 4));
         await writablejson.close();
-        // 保存提示词为txt
-        const saveExampleHandle = await modelDirHandle.getFileHandle("example.txt", {create: true});
-        const writableExample = await saveExampleHandle.createWritable();
-        await writableExample.write(triggerWords + '\n\n');
-        for (const str of promptList) {
-            await writableExample.write(str + '\n\n');
-        }
-        await writableExample.close();
         alert("封面信息下载完成");
     }
 
