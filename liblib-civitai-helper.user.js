@@ -5,6 +5,8 @@
 // @description  liblib|civitai助手，支持自动保存到目录（Chromium），或自动批量下载（Firefox/Safari等），封面图片和json同名，兼容新版Civitai接口和页面
 // @match        https://www.liblib.ai/modelinfo/*
 // @match        https://www.liblib.art/modelinfo/*
+// @match        http://www.liblib.ai/modelinfo/*
+// @match        http://www.liblib.art/modelinfo/*
 // @match        https://civitai.com/models/*
 // @match        http://civitai.com/models/*
 // @updateURL    https://raw.githubusercontent.com/Runarry/liblib-civitai-helper/refs/heads/main/liblib-civitai-helper.user.js
