@@ -254,7 +254,8 @@
             const tagElements = document.querySelectorAll('a.mantine-Badge-root');
             const tags = [];
             tagElements.forEach(el => {
-                const tagText = el.textContent.trim();
+                const span = el.querySelector('span.mantine-Badge-inner');
+                const tagText = span ? span.textContent.trim() : '';
                 if (tagText) tags.push(tagText);
             });
             return tags;
