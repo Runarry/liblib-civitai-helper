@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         liblib-civitai-helper 
 // @namespace    http://tampermonkey.net/
-// @version      1.3.9
+// @version      1.4.0
 // @description  liblib|civitai助手，支持自动保存到目录（Chromium），或自动批量下载（Firefox/Safari等），封面图片和json同名，兼容新版Civitai接口和页面
 // @match        https://www.liblib.ai/modelinfo/*
 // @match        https://www.liblib.art/modelinfo/*
@@ -133,6 +133,7 @@
                 }
                 const jsonFileName = coverFileName.replace(/\.[^/.]+$/, ".json");
                 // examplePrompt 放最后
+
                 let modelInfoJson = {
                     modelType: modelTypeName,
                     description: textDesc,
@@ -145,6 +146,22 @@
                     basic: basic,
                     examplePrompt: promptList
                 };
+
+                // 新增提取tagsV2中的所有tagLabel
+                try {
+                    const tagsV2 = scriptJson.props.pageProps.modelInfo.tagsV2;
+                    let allTags = [];
+                    if (tagsV2) {
+                        for (const key in tagsV2) {
+                            if (Array.isArray(tagsV2[key])) {
+                                allTags = allTags.concat(tagsV2[key].map(tag => tag.tagLabel));
+                            }
+                        }
+                    }
+                    modelInfoJson.tags = allTags;
+                } catch (e) {
+                    console.warn("提取tagsV2失败", e);
+                }
                 if (isChromiumFSAPISupported()) {
                     const dirHandle = await window.showDirectoryPicker({mode: "readwrite"});
                     // 下载图片
@@ -227,9 +244,21 @@
 
         const modelType = model_data.type || model_data.modelType || "未分类";
         const modelDesc = (version.description || "") + "\n\n" + (model_data.description || "");
+
         const triggerWords = Array.isArray(version.trainedWords) && version.trainedWords.length > 0
             ? "触发词：" + version.trainedWords.join("、")
             : "触发词：无";
+
+        // 新增提取Civitai页面的模型tag信息
+        function extractCivitaiTags() {
+            const tagElements = document.querySelectorAll('a.mantine-Badge-root');
+            const tags = [];
+            tagElements.forEach(el => {
+                const tagText = el.textContent.trim();
+                if (tagText) tags.push(tagText);
+            });
+            return tags;
+        }
 
         let promptList = [];
         if (Array.isArray(version.images)) {
@@ -268,7 +297,8 @@
             from: "Civitai",
             fromUrl: window.location.href,
             basic: basic,
-            examplePrompt: promptList
+            examplePrompt: promptList,
+            tags: extractCivitaiTags()
         };
 
         if (isChromiumFSAPISupported()) {
