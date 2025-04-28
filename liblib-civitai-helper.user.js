@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         liblib-civitai-helper 
 // @namespace    http://tampermonkey.net/
-// @version      1.4.0
+// @version      1.4.1
 // @description  liblib|civitai助手，支持自动保存到目录（Chromium），或自动批量下载（Firefox/Safari等），封面图片和json同名，兼容新版Civitai接口和页面
 // @match        https://www.liblib.ai/modelinfo/*
 // @match        https://www.liblib.art/modelinfo/*
@@ -334,7 +334,11 @@
         alert("封面信息下载完成");
     }
 
-    function createButtons(site) {
+    // MutationObserver 相关变量
+    let modelActionCardObserver = null;
+    let hasInsertedBtn = false;
+
+    function insertLiblibButton(site) {
         if (document.getElementById('model-helper-btn')) return;
         const div1 = document.createElement('div');
         div1.style.display = 'flex';
@@ -385,6 +389,40 @@
                 document.body.appendChild(div1);
             }
         }
+        hasInsertedBtn = true;
+    }
+
+    function observeModelActionCard(site) {
+        // 先移除旧 observer
+        if (modelActionCardObserver) {
+            modelActionCardObserver.disconnect();
+            modelActionCardObserver = null;
+        }
+        hasInsertedBtn = false;
+        // 如果按钮已存在，先移除
+        const oldBtn = document.getElementById('model-helper-btn');
+        if (oldBtn) oldBtn.remove();
+
+        // 立即检查一次
+        const actionCard = document.querySelector('[class^="ModelActionCard_modelActionCard"]');
+        if (actionCard && !hasInsertedBtn) {
+            insertLiblibButton(site);
+            return; // 已插入，无需继续监听
+        }
+
+        // 启动 observer
+        modelActionCardObserver = new MutationObserver((mutationsList, observer) => {
+            if (hasInsertedBtn) return;
+            const actionCard = document.querySelector('[class^="ModelActionCard_modelActionCard"]');
+            if (actionCard) {
+                insertLiblibButton(site);
+                if (modelActionCardObserver) {
+                    modelActionCardObserver.disconnect();
+                    modelActionCardObserver = null;
+                }
+            }
+        });
+        modelActionCardObserver.observe(document.body, { childList: true, subtree: true });
     }
 
     function observeUrlChange(site) {
@@ -393,10 +431,15 @@
             if (location.href !== lastUrl) {
                 lastUrl = location.href;
                 setTimeout(() => {
+                    // 移除按钮和断开 observer，并重新监听
                     if (document.getElementById('model-helper-btn')) {
                         document.getElementById('model-helper-btn').remove();
                     }
-                    createButtons(site);
+                    if (modelActionCardObserver) {
+                        modelActionCardObserver.disconnect();
+                        modelActionCardObserver = null;
+                    }
+                    observeModelActionCard(site);
                 }, 1000);
             }
         }, 1000);
@@ -406,7 +449,7 @@
         const site = window.location.hostname.includes('liblib') ? 'liblib'
                   : window.location.hostname.includes('civitai') ? 'civitai'
                   : 'unknown';
-        setTimeout(() => createButtons(site), 1000);
+        setTimeout(() => observeModelActionCard(site), 1000);
         observeUrlChange(site);
     })();
 
