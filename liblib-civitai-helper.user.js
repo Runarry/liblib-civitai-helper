@@ -147,10 +147,10 @@
                     examplePrompt: promptList
                 };
 
+                let allTags = model_data.data.customTags || [];
                 // 新增提取tagsV2中的所有tagLabel
                 try {
                     const tagsV2 = scriptJson.props.pageProps.modelInfo.tagsV2;
-                    let allTags = [];
                     if (tagsV2) {
                         for (const key in tagsV2) {
                             if (Array.isArray(tagsV2[key])) {
@@ -162,6 +162,7 @@
                 } catch (e) {
                     console.warn("提取tagsV2失败", e);
                 }
+
                 if (isChromiumFSAPISupported()) {
                     const dirHandle = await window.showDirectoryPicker({mode: "readwrite"});
                     // 下载图片
