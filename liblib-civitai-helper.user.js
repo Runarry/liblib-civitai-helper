@@ -107,7 +107,32 @@
                     var tmp = authimageExt.indexOf("?");
                     if (tmp > 0) authimageExt = authimageExt.substring(0, tmp);
                     const generateInfo = authImage.generateInfo;
-                    if (generateInfo && generateInfo.prompt) promptList.push(generateInfo.prompt);
+                    let generateText = "";
+                    if (generateInfo) {
+                        const fields = [
+                            "prompt", "negativePrompt", "promptCn", "originalModelName", "metainformation", "negativePromptCn",
+                            "samplingMethod", "samplingStep", "cfgScale", "seed", "pngInfo", "createBy", "createTime",
+                            "updateBy", "updateTime", "deleteFlag", "modelNames", "generateId", "outputId", "models",
+                            "v2Models", "v2MixModels", "generateInfo", "contentId", "controlNet", "recurrentEnabled",
+                            "imageSource", "createByTeam"
+                        ];
+                        for (const key of fields) {
+                            if (generateInfo[key] !== undefined && generateInfo[key] !== null) {
+                                // 对象或数组用JSON.stringify
+                                let value = generateInfo[key];
+                                if (typeof value === "object") {
+                                    try {
+                                        value = JSON.stringify(value);
+                                    } catch (e) {
+                                        value = String(value);
+                                    }
+                                }
+                                generateText += `${key}: ${value}\n`;
+                            }
+                        }
+                    }
+                    promptList.push(generateText);
+
                     if (!isCover) {
                         isCover = true;
                         coverExt = authimageExt;
