@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         liblib-civitai-helper 
 // @namespace    http://tampermonkey.net/
-// @version      1.4.4
+// @version      1.4.5
 // @description  liblib|civitai助手，支持自动保存到目录（Chromium），或自动批量下载（Firefox/Safari等），封面图片和json同名，兼容新版Civitai接口和页面
 // @match        https://www.liblib.ai/modelinfo/*
 // @match        https://www.liblib.art/modelinfo/*
@@ -429,25 +429,33 @@
         const oldBtn = document.getElementById('model-helper-btn');
         if (oldBtn) oldBtn.remove();
 
+        const targetSelector = site === 'liblib'
+            ? '[class^="ModelActionCard_modelActionCard"]'
+            : '.mantine-ContainerGrid-root'; // Civitai 使用 grid root 作为目标
+
         // 立即检查一次
-        const actionCard = document.querySelector('[class^="ModelActionCard_modelActionCard"]');
-        if (actionCard && !hasInsertedBtn) {
-            insertLiblibButton(site);
+        const targetElement = document.querySelector(targetSelector);
+        if (targetElement && !hasInsertedBtn) {
+            insertLiblibButton(site); // 插入按钮
             return; // 已插入，无需继续监听
         }
 
         // 启动 observer
         modelActionCardObserver = new MutationObserver((mutationsList, observer) => {
-            if (hasInsertedBtn) return;
-            const actionCard = document.querySelector('[class^="ModelActionCard_modelActionCard"]');
-            if (actionCard) {
-                insertLiblibButton(site);
+            if (hasInsertedBtn) return; // 如果已插入则不再处理
+
+            // 检查目标元素是否出现
+            const targetElement = document.querySelector(targetSelector);
+            if (targetElement) {
+                insertLiblibButton(site); // 插入按钮
+                // 成功插入后停止观察
                 if (modelActionCardObserver) {
                     modelActionCardObserver.disconnect();
                     modelActionCardObserver = null;
                 }
             }
         });
+        // 观察整个 body 的子节点和子树变化
         modelActionCardObserver.observe(document.body, { childList: true, subtree: true });
     }
 
