@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         liblib-civitai-helper 
 // @namespace    http://tampermonkey.net/
-// @version      1.4.5
+// @version      1.4.6
 // @description  liblib|civitai助手，支持自动保存到目录（Chromium），或自动批量下载（Firefox/Safari等），封面图片和json同名，兼容新版Civitai接口和页面
 // @match        https://www.liblib.ai/modelinfo/*
 // @match        https://www.liblib.art/modelinfo/*
@@ -168,7 +168,7 @@
                     from: "Liblib",
                     fromUrl: window.location.href,
                     triggerWord: triggerWord,
-                    basic: basic,
+                    baseModel: basic,
                     examplePrompt: promptList
                 };
 
@@ -323,7 +323,7 @@
             triggerWords,
             from: "Civitai",
             fromUrl: window.location.href,
-            basic: basic,
+            baseModel: basic,
             examplePrompt: promptList,
             tags: extractCivitaiTags()
         };
