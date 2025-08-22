@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         liblib-civitai-helper 
 // @namespace    http://tampermonkey.net/
-// @version      1.4.6
+// @version      1.4.7
 // @description  liblib|civitai助手，支持自动保存到目录（Chromium），或自动批量下载（Firefox/Safari等），封面图片和json同名，兼容新版Civitai接口和页面
 // @match        https://www.liblib.ai/modelinfo/*
 // @match        https://www.liblib.art/modelinfo/*
@@ -65,13 +65,13 @@
 
         await fetch(url_acceptor, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({timestamp: Date.now()})
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ timestamp: Date.now() })
         });
         const resp = await fetch(url_model, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({timestamp: Date.now()})
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ timestamp: Date.now() })
         });
         const model_data = await resp.json();
         if (model_data.code !== 0) return;
@@ -149,7 +149,7 @@
                             if (valueDiv) basic = valueDiv.textContent.trim();
                         }
                     });
-                } catch (e) {}
+                } catch (e) { }
                 let triggerWord = '触发词：';
                 if ('triggerWord' in verItem && verItem.triggerWord) {
                     triggerWord = triggerWord + verItem.triggerWord;
@@ -189,18 +189,18 @@
                 }
 
                 if (isChromiumFSAPISupported()) {
-                    const dirHandle = await window.showDirectoryPicker({mode: "readwrite"});
+                    const dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
                     // 下载图片
                     if (coverImageUrl) {
                         const resp_download = await fetch(coverImageUrl);
                         const blob = await resp_download.blob();
-                        const picHandle = await dirHandle.getFileHandle(coverFileName, {create: true});
+                        const picHandle = await dirHandle.getFileHandle(coverFileName, { create: true });
                         const writable = await picHandle.createWritable();
                         await writable.write(blob);
                         await writable.close();
                     }
                     // 保存json
-                    const savejsonHandle = await dirHandle.getFileHandle(jsonFileName, {create: true});
+                    const savejsonHandle = await dirHandle.getFileHandle(jsonFileName, { create: true });
                     const writablejson = await savejsonHandle.createWritable();
                     await writablejson.write(JSON.stringify(modelInfoJson, null, 4));
                     await writablejson.close();
@@ -211,7 +211,7 @@
                             name: coverFileName
                         });
                     }
-                    const jsonBlob = new Blob([JSON.stringify(modelInfoJson, null, 4)], {type: "application/json"});
+                    const jsonBlob = new Blob([JSON.stringify(modelInfoJson, null, 4)], { type: "application/json" });
                     const url = URL.createObjectURL(jsonBlob);
                     GM_download({
                         url: url,
@@ -241,7 +241,7 @@
                 try {
                     const data = JSON.parse(scriptElement.textContent);
                     modelVersionId = data?.props?.pageProps?.trpcState?.json?.queries?.[0]?.state?.data?.modelVersions?.[0]?.id;
-                } catch (e) {}
+                } catch (e) { }
             }
         }
         return { modelId, modelVersionId };
@@ -342,16 +342,16 @@
         };
 
         if (isChromiumFSAPISupported()) {
-            const dirHandle = await window.showDirectoryPicker({mode: "readwrite"});
+            const dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
             if (coverImageUrl) {
                 const resp = await fetch(coverImageUrl);
                 const blob = await resp.blob();
-                const picHandle = await dirHandle.getFileHandle(coverFileName, {create: true});
+                const picHandle = await dirHandle.getFileHandle(coverFileName, { create: true });
                 const writable = await picHandle.createWritable();
                 await writable.write(blob);
                 await writable.close();
             }
-            const savejsonHandle = await dirHandle.getFileHandle(jsonFileName, {create: true});
+            const savejsonHandle = await dirHandle.getFileHandle(jsonFileName, { create: true });
             const writablejson = await savejsonHandle.createWritable();
             await writablejson.write(JSON.stringify(modelInfo, null, 4));
             await writablejson.close();
@@ -362,7 +362,7 @@
                     name: coverFileName
                 });
             }
-            const jsonBlob = new Blob([JSON.stringify(modelInfo, null, 4)], {type: "application/json"});
+            const jsonBlob = new Blob([JSON.stringify(modelInfo, null, 4)], { type: "application/json" });
             const url = URL.createObjectURL(jsonBlob);
             GM_download({
                 url: url,
@@ -421,7 +421,7 @@
             `;
             div1.appendChild(button2);
             div1.style.marginBottom = '8px';
-            
+
             // 查找下载链接
             const downloadLink = document.querySelector('a[href*="/api/download/models"]');
             if (downloadLink) {
@@ -505,8 +505,8 @@
 
     (function () {
         const site = window.location.hostname.includes('liblib') ? 'liblib'
-                  : window.location.hostname.includes('civitai') ? 'civitai'
-                  : 'unknown';
+            : window.location.hostname.includes('civitai') ? 'civitai'
+                : 'unknown';
         setTimeout(() => observeModelActionCard(site), 2000);
         observeUrlChange(site);
     })();
