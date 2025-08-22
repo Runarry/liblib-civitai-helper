@@ -234,16 +234,26 @@
         }
         if (url.searchParams.has('modelVersionId')) {
             modelVersionId = url.searchParams.get('modelVersionId');
+        } else {
+            // 从页面获取当前版本ID
+            const scriptElement = document.getElementById('__NEXT_DATA__');
+            if (scriptElement) {
+                try {
+                    const data = JSON.parse(scriptElement.textContent);
+                    modelVersionId = data?.props?.pageProps?.trpcState?.json?.queries?.[0]?.state?.data?.modelVersions?.[0]?.id;
+                } catch (e) {}
+            }
         }
         return { modelId, modelVersionId };
     }
 
     async function saveCivitaiModelInfo() {
         const { modelId, modelVersionId } = getModelInfoFromURL();
-        if (!modelId || !modelVersionId) {
+        if (!modelId) {
             alert("未找到模型ID信息，请确认当前页面为模型详情页。");
             return;
         }
+        let versionIdToUse = modelVersionId;
         const url_model = `https://civitai.com/api/v1/models/${modelId}`;
         let model_data;
         try {
@@ -258,7 +268,10 @@
             return;
         }
         const versions = model_data.modelVersions || [];
-        const version = versions.find(v => String(v.id) === String(modelVersionId));
+        if (!versionIdToUse && versions.length > 0) {
+            versionIdToUse = versions[0].id;
+        }
+        const version = versions.find(v => String(v.id) === String(versionIdToUse));
         if (!version) {
             alert("未找到对应的模型版本信息。");
             return;
@@ -391,25 +404,36 @@
             }
         } else if (site === 'civitai') {
             const button2 = document.createElement('button');
-            button2.textContent = '下载封面+生成信息 (Civitai)';
+            button2.textContent = '下载封面+生成信息';
             button2.onclick = saveCivitaiModelInfo;
-            button2.style.padding = '15px';
-            button2.style.width = "100%";
-            button2.style.setProperty('background-color', 'blue', 'important');
-            button2.style.color = 'white';
-            button2.style.display = 'block';
-            button2.style.flex = "1";
-            button2.style.borderRadius = '4px';
-            button2.style.marginBottom = '5px';
+            button2.className = 'mantine-Button-root';
+            button2.style.cssText = `
+                background-color: #228be6;
+                color: white;
+                padding: 0 12px;
+                height: 36px;
+                border-radius: 4px;
+                border: none;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+                width: 100%;
+            `;
             div1.appendChild(button2);
-            const gridRoot = document.querySelector('.mantine-ContainerGrid-root');
-            if (gridRoot && gridRoot.children.length > 0) {
-                const firstChild = gridRoot.children[0];
-                if (firstChild) {
-                    firstChild.insertBefore(div1, firstChild.firstChild);
-                    div1.style.display = 'block';
+            div1.style.marginBottom = '8px';
+            
+            // 查找下载链接
+            const downloadLink = document.querySelector('a[href*="/api/download/models"]');
+            if (downloadLink) {
+                // 找到包含下载链接的父容器
+                let container = downloadLink.parentElement;
+                while (container && !container.className.includes('Stack-root')) {
+                    container = container.parentElement;
+                }
+                if (container) {
+                    container.insertBefore(div1, container.firstChild);
                 } else {
-                    document.body.appendChild(div1);
+                    downloadLink.parentElement.insertBefore(div1, downloadLink);
                 }
             } else {
                 document.body.appendChild(div1);
@@ -431,7 +455,7 @@
 
         const targetSelector = site === 'liblib'
             ? '[class^="ModelActionCard_modelActionCard"]'
-            : '.mantine-ContainerGrid-root'; // Civitai 使用 grid root 作为目标
+            : 'a[href*="/api/download/models"]'; // Civitai 监听下载链接出现
 
         // 立即检查一次
         const targetElement = document.querySelector(targetSelector);
@@ -483,7 +507,7 @@
         const site = window.location.hostname.includes('liblib') ? 'liblib'
                   : window.location.hostname.includes('civitai') ? 'civitai'
                   : 'unknown';
-        setTimeout(() => observeModelActionCard(site), 1000);
+        setTimeout(() => observeModelActionCard(site), 2000);
         observeUrlChange(site);
     })();
 
